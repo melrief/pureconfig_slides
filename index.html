@@ -1,0 +1,152 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>PureConfig Presentation</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+<section data-markdown><script type="text/template">
+# [PureConfig](https://github.com/pureconfig/pureconfig)
+
+Configuration made simple
+</script></section>
+<section data-markdown><script type="text/template">
+### The problem
+
+Configuration libraries like TypeSafe config focus on: <!-- .element: style="text-align: left;"  -->
+  1. loading configuration from different sources sources (files, environment variables...)
+  2. providing an API to access the configuration
+
+</script></section>
+<section data-markdown><script type="text/template">
+### The problem
+
+From the user point of view:<!-- .element: style="text-align: left;"  -->
+
+1. loading configuration is easy
+  - it's just a method to call
+  - the complex part is hidden internally to the library
+2. accessing the configuration is much more complex
+
+</script></section>
+<section data-markdown><script type="text/template">
+### The problem
+
+--<!-- .element: style="visibility:hidden;" -->
+
+Let's see an example. We want to load the configuration<!-- .element: style="font-size:90%;text-align: left;"  -->
+
+-- <!-- .element: style="font-size:10%;visibility:hidden;" -->
+
+```scala
+case class ServerConfig(address: String, port: Int)
+case class MyConfig(server: ServerConfig, numThreads: Int)
+```
+
+from the configuration file<!-- .element: style="font-size:90%;text-align: left;"  -->
+
+```javascript
+my.app {
+  server {
+    address: "111.222.333.444"
+    port: 1234
+  }
+  numThreads: 1
+}
+```
+
+--<!-- .element: style="visibility:hidden;" -->
+
+</script></section>
+<section data-markdown><script type="text/template">
+### The problem
+
+Loading the configuration:<!-- .element: style="font-size:70%;text-align: left;"  -->
+
+```scala
+val rawConfig = ConfigFactory.load()
+```
+<!-- .element: style="width:100%;height:100%;" -->
+
+Accessing the configuration:<!-- .element: style="font-size:70%;text-align: left;"  -->
+
+```scala
+val serverAddress = rawConfig.getString("my.app.server.address")
+if (isServerAddressNotValid(serverAddress))
+  throw new Exception(s"$serverAddress is not a valid address")
+val serverPort = rawConfig.getInt("my.app.server.port")
+if (isServerPortNotValid(serverPort))
+  throw new Exception(s"$serverPort is not a valid port")
+val numThreads = rawConfig.getInt("my.app.numThreads")
+if (numThreads < 1)
+  throw new Exception(s"$numThreads must be a positive number")
+val serverConfig = ServerConfig(serverAddress, serverPort)
+val config = MyConfig(serverConfig, numThreads)
+```
+<!-- .element: style="width:100%;height:100%;" -->
+</script></section>
+<section data-markdown><script type="text/template">
+### The problem
+
+- a lot of code for a relatively small task
+- boilerplate code everywhere:
+  - the field type already tells me what kind of conversion is needed
+    - e.g. `Int` needs a conversion to `Int` (duh)
+  - the field path already tells me where to find the  configuration
+    - e.g. `server.port` can be found at `my.app.server.port`
+- difficult to maintain
+</script></section>
+<section data-markdown><script type="text/template">
+### PureConfig
+
+- works on top of typesafe config
+- solves the problem by providing automatic configuration reading
+
+```scala
+val config = pureconfig.loadConfig[MyConfig]("my.app")
+```
+</script></section>
+<!--				<section>Slide 1</section>
+				<section>Slide 2</section>
+-->
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				history: true,
+
+				// More info https://github.com/hakimel/reveal.js#dependencies
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+		</script>
+	</body>
+</html>
