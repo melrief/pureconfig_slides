@@ -53,7 +53,7 @@ From the user point of view:<!-- .element: style="text-align: left;"  -->
 
 --<!-- .element: style="visibility:hidden;" -->
 
-Let's see an example. We want to load the configuration<!-- .element: style="font-size:90%;text-align: left;"  -->
+Let's see it with an example. We want to load the configuration<!-- .element: style="font-size:85%;text-align: left;"  -->
 
 -- <!-- .element: style="font-size:10%;visibility:hidden;" -->
 
@@ -62,7 +62,7 @@ case class ServerConfig(address: String, port: Int)
 case class MyConfig(server: ServerConfig, numThreads: Int)
 ```
 
-from the configuration file<!-- .element: style="font-size:90%;text-align: left;"  -->
+from the configuration file<!-- .element: style="font-size:85%;text-align: left;"  -->
 
 ```javascript
 my.app {
@@ -108,22 +108,84 @@ val config = MyConfig(serverConfig, numThreads)
 ### The problem
 
 - a lot of code for a relatively small task
-- boilerplate code everywhere:
-  - the field type already tells me what kind of conversion is needed
-    - e.g. `Int` needs a conversion to `Int` (duh)
-  - the field path already tells me where to find the  configuration
-    - e.g. `server.port` can be found at `my.app.server.port`
+- boilerplate code everywhere: 
+  - the field type already tells me what kind of conversion is needed<!-- .element: style="font-size:80%;"  -->
+    - e.g. Int needs a conversion to Int (duh)<!-- .element: style="font-size:70%;"  -->
+  - the field path already tells me where to find the  configuration<!-- .element: style="font-size:80%;"  -->
+    - e.g. server.port can be found at my.app.server.port<!-- .element: style="font-size:70%;"  -->
+- error prone, e.g. the path is a string and it must be consistent with the class path
 - difficult to maintain
+</script></section>
+<section data-markdown><script type="text/template">
+### The problem
+
+Given the user configuration class, can we derive the configuration readers automatically?
 </script></section>
 <section data-markdown><script type="text/template">
 ### PureConfig
 
-- works on top of typesafe config
-- solves the problem by providing automatic configuration reading
+PureConfig is a Scala library that uses Shapeless to automatically derive configuration readers and writers for a given class<!-- .element: style="text-align:left;" -->
+
+-- <!-- .element: style="font-size:40%;visibility:hidden;" -->
 
 ```scala
 val config = pureconfig.loadConfig[MyConfig]("my.app")
 ```
+
+</script></section>
+<section data-markdown><script type="text/template">
+### PureConfig
+
+It is designed with two ideas in mind:<!-- .element: style="text-align:left;" -->
+- Minimal effort needed to load your configuration
+- Easy to extend and add support for custom readers/writers
+</script></section>
+<section data-markdown><script type="text/template">
+### PureConfig
+
+PureConfig supports out-of-the-box<!-- .element: style="text-align:left;" -->
+- case classes
+- ADTs
+- all primitive types (String, Boolean, ...)
+- all collections implementing TraversableOnce (List, ...)
+- Map with String keys
+- Option for optional values
+- java.time.*, URL, URI, UUID, Path, (Finite)Duration ...
+</script></section>
+<section data-markdown><script type="text/template">
+### PureConfig
+
+```scala
+case class ServerConfig(address: String, port: Int)
+sealed trait TraceMode
+case object DontTrace extends TraceMode
+case class TraceTo(server: ServerConfig) extends TraceMode
+case class Config(servers: List[ServerConfig], trace: TraceMode)
+```
+<!-- .element: style="width:100%;height:100%;" -->
+
+```javascript
+my.app {
+  servers: [{ address: "111.222.333.444", port: 1234 }]
+  trace: {
+    type: traceto
+    server: { address: "444.333.222.111", port: 4321 }
+  }
+}
+```
+<!-- .element: style="width:100%;height:100%;" -->
+
+```scala
+val config = pureconfig.loadConfig[Config](rawConfig)
+println(config)
+// Right(
+//   MyConfig(
+//     List(ServerConfig("111.222.333.444", 1234)),
+//     TraceTo(ServerConfig("444.333.222.111", 4321))))
+```
+<!-- .element: style="width:100%;height:100%;" -->
+</script></section>
+<section data-markdown><script type="text/template">
 </script></section>
 <!--				<section>Slide 1</section>
 				<section>Slide 2</section>
