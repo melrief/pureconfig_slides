@@ -228,7 +228,86 @@ implicit val temperatureConfigConvert =
 <section data-markdown><script type="text/template">
 ### Extensibility and minimal effort
 
-Focus on the support for specific types that you want to add or modify and let PureConfig do the rest of the work.
+- focus on the support for specific types that you want to add or modify and...
+- ...let PureConfig do the rest of the work.
+</script></section>
+<section data-markdown><script type="text/template">
+### Behavior for Case Classes
+
+The default way to read/write case classes follows some conventions<!-- .element: style="text-align:left;" -->
+  - fields are written in kebab case, such as my-field, and the associated field names are written in camel case, such as myField<!-- .element style="font-size:90%;"-->
+  - allow unknown keys<!-- .element style="font-size:90%;"-->
+  - uses default values when a key is missing<!-- .element style="font-size:90%;"-->
+</script></section>
+<section data-markdown><script type="text/template">
+### Product Hint
+
+- a ProductHint is an object that "hints" PureConfig on how to derive readers/writers
+- e.g. if we want to use camel case instead of kebab case for field in the configuration
+
+```scala
+implicit def hint[T] =
+  ProductHint[T](ConfigFieldMapping(CamelCase, CamelCase))
+```
+- ProductHint works at type level, you can define different rules for different types
+<!-- .element: style="width:100%;height:100%;" -->
+</script></section>
+<section data-markdown><script type="text/template">
+### Behavior for ADTs
+
+Similarly to the behavior for case classes, the default way to read/write case classes follows some conventions<!-- .element: style="text-align:left;" -->
+  - a field "type" must be available and it must be set to the name of the ADT class to decode<!-- .element style="font-size:90%;"-->
+  ```scala
+  sealed trait AnimalConf
+  case class DogConf(age: Int) extends AnimalConf
+  case class BirdConf(canFly: Boolean) extends AnimalConf
+  loadConfig[AnimalConf](parseString("""{ type: "dogconf", age: 4 }"""))
+  // Right(DogConf(4))
+  ```
+<!-- .element: style="width:100%;height:100%;" -->
+</script></section>
+<section data-markdown><script type="text/template">
+### Coproduct Hint
+
+- similar to ProductHint but for ADTs, aka coproducts
+- can be used to decide the strategy used to read the ADT value from the configuration
+
+</script></section>
+<section data-markdown><script type="text/template">
+### Coproduct Hint Example
+
+FirstSuccessCoproductHint is a CoproductHint that<!-- .element style="text-align:left;" -->
+  - doesn't require the "type" field
+  - selects the first class that matches the fields found
+
+  ```scala
+  sealed trait Animal
+  case class Cat(name: String) extends Animal
+  case class Dog(name: String) extends Animal
+  case class Pig(age: Int) extends Animal
+
+  implicit val animalCH = new FirstSuccessCoproductHint[Animal]
+
+  loadConfig[Animal](ConfigFactory.parseString("""{ name:"foo"}"""))
+  // Right(Cat("foo"))
+  ```
+<!-- .element: style="width:100%;height:100%;" -->
+</script></section>
+<section data-markdown><script type="text/template">
+### Much More
+
+- not enough time to show everything but there is much more
+  - Errors accumulation: all errors are returned to the user accumulated in a ConfigReaderFailures
+  - Missing keys and default values
+  - configurable instances, e.g. for java.time.LocalDate
+  - ...
+</script></section>
+<section data-markdown><script type="text/template">
+# [PureConfig](https://github.com/pureconfig/pureconfig)
+
+Thanks!
+
+Questions?
 </script></section>
 <!--				<section>Slide 1</section>
 				<section>Slide 2</section>
@@ -243,6 +322,12 @@ Focus on the support for specific types that you want to add or modify and let P
 			// More info https://github.com/hakimel/reveal.js#configuration
 			Reveal.initialize({
 				history: true,
+
+				controls: false,
+
+				slideNumber: true,
+
+				transitionSpeed: 'fast',
 
 				// More info https://github.com/hakimel/reveal.js#dependencies
 				dependencies: [
