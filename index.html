@@ -141,9 +141,8 @@ It is designed with two ideas in mind:<!-- .element: style="text-align:left;" --
 - Easy to extend and add support for custom readers/writers
 </script></section>
 <section data-markdown><script type="text/template">
-### PureConfig
+### Supported types
 
-PureConfig supports out-of-the-box<!-- .element: style="text-align:left;" -->
 - case classes
 - ADTs
 - all primitive types (String, Boolean, ...)
@@ -153,7 +152,7 @@ PureConfig supports out-of-the-box<!-- .element: style="text-align:left;" -->
 - java.time.*, URL, URI, UUID, Path, (Finite)Duration ...
 </script></section>
 <section data-markdown><script type="text/template">
-### PureConfig
+### Supported types example
 
 ```scala
 case class ServerConfig(address: String, port: Int)
@@ -186,6 +185,50 @@ println(config)
 <!-- .element: style="width:100%;height:100%;" -->
 </script></section>
 <section data-markdown><script type="text/template">
+### Extensibility
+
+- Everything that has a `ConfigReader` / `ConfigWriter` instance can be read/written from/to a configuration value
+- Support for types not provided by PureConfig can be added by providing the required instances
+
+```scala
+implicit val utConfigReader = ConfigReader[UT].fromString(/*... */)
+```
+<!-- .element: style="width:100%;height:100%;" -->
+</script></section>
+<section data-markdown><script type="text/template">
+### Extensibility example: Squants
+
+- [Squants](http://www.squants.com/) is a framework of data types for representing Quantities<!-- .reveal li: style="font-size:70%;" -->
+- the pureconfig-squants module adds support for those types
+
+```scala
+case class HowConfig(far: Length, hot: temporature)
+val conf = parseString("""{
+  far: 42.195 km
+  hot: 56.7° C
+}""")
+loadConfig[HowConfiguration](conf)
+// Right(HowConfiguration(42.195 km,56.7°C))
+```
+<!-- .element: style="width:100%;height:100%;" -->
+</script></section>
+<section data-markdown><script type="text/template">
+### Extensibility example: Squants
+
+- pureconfig-squants is just a collection of `ConfigReader`s and `ConfigWriter`s for the datatypes, e.g.
+
+```scala
+implicit val temperatureConfigConvert =
+  viaNonEmptyStringTry[Temperature](Temperature.apply, _.toString)
+```
+<!-- .element: style="width:100%;height:100%;" -->
+
+- the library adds supports for tens of new datatypes in less than 200 lines of code...
+</script></section>
+<section data-markdown><script type="text/template">
+### Extensibility and minimal effort
+
+Focus on the support for specific types that you want to add or modify and let PureConfig do the rest of the work.
 </script></section>
 <!--				<section>Slide 1</section>
 				<section>Slide 2</section>
