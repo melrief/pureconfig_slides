@@ -304,9 +304,9 @@ The value of the type field must be the name of the class lower case
 </script></section>
 <section data-markdown style="text-align:left;"><script type="text/template">
 
-For example, <em>FirstSuccessCoproductHint</em> is a CoproductHint that<!-- .element style="text-align:left;" -->
+<em>FirstSuccessCoproductHint</em> is a CoproductHint that
   - doesn't require the "type" field
-  - selects the first class that matches the fields found
+  - selects the <em>first class matching</em> the fields found
 
   ```scala
   sealed trait Animal
@@ -322,9 +322,31 @@ For example, <em>FirstSuccessCoproductHint</em> is a CoproductHint that<!-- .ele
 <!-- .element: style="width:100%;height:100%;" -->
 </script></section>
 <section data-markdown style="text-align:left;"><script type="text/template">
+
+<em>EnumCoproductHint</em> is a CoproductHunt that
+  - doesn't require the "type" field
+
+  - expects an <em>ADT of objects</em>
+
+  - <em>select</em> the objects <em>by name</em>
+
+  ```scala
+  sealed trait MyEnum
+  case object A extends MyEnum
+  case object B extends MyEnum
+
+  implicit val myEnumCH = new EnumCoproductHint[MyEnum]
+
+  case class Config(myEnum: MyEnum) 
+  loadConfig[Config](parseString("""{ my-enum: "a" }""")) 
+  // Right(Config(A))
+  ```
+<!-- .element: style="width:100%;height:100%;" -->
+</script></section>
+<section data-markdown style="text-align:left;"><script type="text/template">
 - some types, e.g. OffsetDateTime, doesn't have a default way to be read/written
 - PureConfig provides <em>configurable instances</em> for them
-- a configurable instance is an instance that must be configured before it can be used
+- a configurable instance is an instance that must be constructed before it can be used
 </script></section>
 <section data-markdown style="text-align:left;"><script type="text/template">
 For example, the ConfigReader and ConfigWriter for OffsetDateTime require the format
@@ -338,28 +360,51 @@ could not find implicit value for parameter reader:
 
 > import pureconfig.configurable.offsetDateTimeConfigConvert
 > import java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME
-> implicit val offsetDateTimeConfigReader =
+> implicit val offsetDateTimeCC =
     offsetDateTimeConfigConvert(ISO_OFFSET_DATE_TIME) 
 > ConfigReader[OffsetDateTime].from(config) 
 Right(2017-01-01T00:00+02:00)
 </code></pre>
 </script></section>
-<section data-markdown><script type="text/template">
-### Extensibility
+<section data-markdown style="text-align:left;"><script type="text/template">
+- PureConfig has been designed to be <em>extensible</em>
+- to support a new type you need to <em>add the relative instance</em> by
+  - manually implementing it or
+  - using utility methods to instantiate it or
+  - using combinators to create it from an existing instance
+</script></section>
+<section data-markdown style="text-align:left;"><script type="text/template">
+<pre style="width:101%;box-shadow: 0px 0px 0px rgba(0,0,0,0.3);">
+<code class="lang-java hljs" style="max-height:100%;">class JavaConfig { // java classes are not supported!
+  final Positive numThreads; // Positive is another Java class
+  final IPAddress ip; // IPAddress too
 
-- Everything that has a ConfigReader/ConfigWriter instance can be read/written from/to a configuration value
-- Support for types not provided by PureConfig can be added by providing the required instances
+  public JavaConfig(int numThreads, IPAddress ip) { ... }
+}
+</code></pre>
+<pre style="width:101%;box-shadow: 0px 0px 0px rgba(0,0,0,0.3);">
+<code class="lang-scala hljs" style="max-height:100%;">implicit val positiveCR = ConfigReader[Int].emap(i =>
+  if (i > 0) Right(Positive(i)) else Left(...)
 
-```scala
-implicit val utConfigReader = ConfigReader.fromString[UT](/*... */)
-```
-<!-- .element: style="width:100%;height:100%;" -->
+implicit val ipAddressCR =
+  ConfigReader.fromNonEmptyString(catchReadError(new IPAddress(_)))
+
+case class ScalaConfig(numThreads: Positive, ip: IPAddress)
+
+implicit val javaConfigCR = ConfigReader[ScalaConfig].map(c =>
+  new JavaConfig(c.numThreads, c.ip))
+
+val config = parseString(
+  """{ ip-address: "111.222.333.444:1234", num-threads: 1}"""
+loadConfig[JavaConfig](config)
+// Right(JavaConfig(1, "111.222.333.4444:1234"))
+</code></pre>
 </script></section>
 <section data-markdown><script type="text/template">
-### Extensibility example: Squants
 
+- <em>pureconfig-squants</em> is a great example of how to extend PureConfig
 - [Squants](http://www.squants.com/) is a framework of data types for representing Quantities<!-- .reveal li: style="font-size:70%;" -->
-- the pureconfig-squants module adds support for those types
+- pureconfig-squants adds support for those types
 
 ```scala
 case class HowConfig(far: Length, hot: Temperature)
@@ -373,7 +418,6 @@ loadConfig[HowConfiguration](conf)
 <!-- .element: style="width:100%;height:100%;" -->
 </script></section>
 <section data-markdown><script type="text/template">
-### Extensibility example: Squants
 
 - pureconfig-squants is just a collection of ConfigReaders and ConfigWriters for the datatypes, e.g.
 
@@ -385,20 +429,33 @@ implicit val temperatureConfigConvert =
 
 - the library adds supports for tens of new datatypes in less than 200 lines of code...
 </script></section>
-<section data-markdown><script type="text/template">
-### Extensibility and minimal effort
-
-- focus on the support for specific types that you want to add or modify and...
-- ...let PureConfig do the rest of the work.
+<section data-markdown style="text-align:left;"><script type="text/template">
+PureConfig modules add support for
+- <em>pureconfig-akka</em>
+- <em>pureconfig-cats</em>
+- <em>pureconfig-enum</em>
+- <em>pureconfig-enumeratum</em>
+- <em>pureconfig-javax</em>
+- <em>pureconfig-joda</em>
+- <em>pureconfig-scalaxml</em>
+- <em>pureconfig-squants</em>
+- <em>refined-pureconfig</em>
 </script></section>
 <section data-markdown><script type="text/template">
-### Much More
-
-- not enough time to show everything but there is much more
-  - Errors accumulation: all errors are returned to the user accumulated in a ConfigReaderFailures
-  - Missing keys and default values
-  - configurable instances, e.g. for java.time.LocalDate
-  - ...
+- failures are modelled as non empty lists of ConfigReaderFailure, aka <em>ConfigReaderFailures</em>
+- errors are aggregated together when they happen
+- <em>ConfigReaderFailure</em> model any kind of error that can happen
+- loadConfigOrThrow is like loadConfig but throws and exception in case of failure
+<pre style="width:101%;box-shadow: 0px 0px 0px rgba(0,0,0,0.3);">
+<code class="lang-scala hljs" style="max-height:100%;">
+loadConfigOrThrow[JavaConfig](parseString("")) 
+pureconfig.error.ConfigReaderException: Cannot convert
+configuration to a JavaConfig. Failures are:
+  at 'ip-address':
+    - Key not found.
+  at 'num-threads':
+    - Key not found.
+</code></pre>
 </script></section>
 <section data-markdown><script type="text/template">
 # [PureConfig](https://github.com/pureconfig/pureconfig)
