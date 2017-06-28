@@ -29,6 +29,13 @@
 
 Mario Pastorelli
 </script></section>
+<section data-markdown style="text-align:left;"><script type="text/template">
+
+- <em>PureConfig</em> is a <em>configuration library</em> for Scala <del>that exists because I was tired to write boilerplate-code</del>
+- in this presentation I'm going to talk about why it exists and what it can do
+- I am one of the authors together with  Leif Wickland, Joao Azevedo, Rui Gonçalves and Derek Morr
+
+</script></section>
 <section data-markdown><script type="text/template">
 
 Configuration libraries like TypeSafe config focus on <!-- .element: style="text-align: left;"  -->
@@ -108,6 +115,7 @@ val config = MyConfig(serverConfig, numThreads)
     - e.g. server.port can be found at my.app.server.port<!-- .element: style="font-size:70%;"  -->
 - <em>error prone</em>, e.g. the path is a string and it must be consistent with the class path
 - <em>difficult to maintain</em>
+- <em>boilerplate code</em>
 </script></section>
 <section data-markdown style="text-align:left;"><script type="text/template">
 
@@ -156,23 +164,22 @@ PureConfig provides
 </script></section>
 <section data-markdown style="text-align:left"><script type="text/template">
 <pre style="width:103%;box-shadow: 0px 0px 0px rgba(0,0,0,0.3);">
-<code class="lang-scala hljs" style="max-height:100%;">
-> val conf = ConfigValueFactory.fromAnyRef("foo")
+<code class="lang-scala hljs" style="max-height:100%;"> val conf = ConfigValueFactory.fromAnyRef("foo")
 
-> ConfigReader[String].from(conf)
-Right("foo")
+ConfigReader[String].from(conf)
+// Right("foo")
 
-> class Foo(s: String) { override def toString: String = s"Foo($s)" } 
-> ConfigReader[Foo].from(conf) 
-could not find implicit value for parameter reader: ConfigReader[Foo]
-> implicit val fooCR = ConfigReader[String].map(new Foo(_)) 
-> ConfigReader[Foo].from(conf) 
-Right(Foo(foo))
+class Foo(s: String) { override def toString: String = s"Foo($s)" } 
+ConfigReader[Foo].from(conf) 
+// could not find implicit value for parameter reader: ConfigReader[Foo]
+implicit val fooCR = ConfigReader[String].map(new Foo(_)) 
+ConfigReader[Foo].from(conf) 
+// Right(Foo(foo))
 
-> implicit val myStringCR =
-    ConfigReader.fromString(s => _ => Right(s.toUpperCase)) 
-> ConfigReader[String].from(fromAnyRef("foo")) 
-Right("FOO")
+implicit val myStringCR =
+  ConfigReader.fromString(s => _ => Right(s.toUpperCase)) 
+ConfigReader[String].from(fromAnyRef("foo")) 
+// Right("FOO")
 </code>
 </pre>
 </script></section>
@@ -236,15 +243,15 @@ The <em>default</em> behavior for case classes follows the conventions
 </script></section>
 <section data-markdown style="text-align:left;"><script type="text/template">
 ```scala
-> case class Config(serverAddress: String, serverPort: Int = 1234)
-> val config = parseString("""
+case class Config(serverAddress: String, serverPort: Int = 1234)
+val config = parseString("""
 {
   server-address: "111.222.333.444"
   foo: 1
 }
 """)
-> loadConfig[Config](config) 
-Right(Config("111.222.333.444", 1234))
+loadConfig[Config](config) 
+// Right(Config("111.222.333.444", 1234))
 ```
 <!-- .element: style="width:100%;height:100%;" -->
 </script></section>
@@ -260,39 +267,38 @@ implicit def hint[T] =
 </script></section>
 <section data-markdown style="text-align:left;"><script type="text/template">
 <pre style="width:101%;box-shadow: 0px 0px 0px rgba(0,0,0,0.3);">
-<code class="lang-scala hljs" style="max-height:100%;">
-> case class Config(serverAddress: String, serverPort: Int = 1234)
-> val config = parseString("""
+<code class="lang-scala hljs" style="max-height:100%;">case class Config(serverAddress: String, serverPort: Int = 1234)
+val config = parseString("""
 {
   server-address: "111.222.333.444"
   foo: 1
 }
 """)
 
-> implicit val configPH =
-    ProductHint[Config](
-      fieldMapping: ConfigFieldMapping(CamelCase, CamelCase),
-      allowUnknownKeys = false) 
+implicit val configPH =
+  ProductHint[Config](
+    fieldMapping: ConfigFieldMapping(CamelCase, CamelCase),
+    allowUnknownKeys = false) 
 
-> loadConfig[Config](config).left.map(_.toList)
-Left(ConfigReaderFailures(
-  KeyNotFound("serverAddress", None, Set("server-address")),
-  UnknownKey("server-address", None),
-  UnknownKey("foo", None)))
+loadConfig[Config](config).left.map(_.toList)
+// Left(ConfigReaderFailures(
+//  KeyNotFound("serverAddress", None, Set("server-address")),
+//  UnknownKey("server-address", None),
+//  UnknownKey("foo", None)))
 </code></pre>
 </script></section>
 <section data-markdown style="text-align:left;"><script type="text/template">
 The <em>default</em> behavior for ADTs require a <em>type</em> field that specifies
 which ADT class to read
-  ```scala
-  sealed trait AnimalConf
-  case class DogConf(age: Int) extends AnimalConf
-  case class BirdConf(canFly: Boolean) extends AnimalConf
+```scala
+sealed trait AnimalConf
+case class DogConf(age: Int) extends AnimalConf
+case class BirdConf(canFly: Boolean) extends AnimalConf
 
-  > val config = parseString("""{ type: "dogconf", age: 4 }""")
-  > loadConfig[AnimalConf](config)
-  // Right(DogConf(4))
-  ```
+val config = parseString("""{ type: "dogconf", age: 4 }""")
+loadConfig[AnimalConf](config)
+// Right(DogConf(4))
+```
 <!-- .element: style="width:102%;height:100%;" -->
 The value of the type field must be the name of the class lower case
 </script></section>
@@ -334,10 +340,10 @@ The value of the type field must be the name of the class lower case
   sealed trait MyEnum
   case object A extends MyEnum
   case object B extends MyEnum
+  case class Config(myEnum: MyEnum) 
 
   implicit val myEnumCH = new EnumCoproductHint[MyEnum]
 
-  case class Config(myEnum: MyEnum) 
   loadConfig[Config](parseString("""{ my-enum: "a" }""")) 
   // Right(Config(A))
   ```
@@ -351,19 +357,18 @@ The value of the type field must be the name of the class lower case
 <section data-markdown style="text-align:left;"><script type="text/template">
 For example, the ConfigReader and ConfigWriter for OffsetDateTime require the format
 <pre style="width:101%;box-shadow: 0px 0px 0px rgba(0,0,0,0.3);">
-<code class="lang-scala hljs" style="max-height:100%;">
-> val config = fromAnyRef("2017-01-01T00:00:00+02:00")
+<code class="lang-scala hljs" style="max-height:100%;">val config = fromAnyRef("2017-01-01T00:00:00+02:00")
 
-> ConfigReader[OffsetDateTime].from(config)
-could not find implicit value for parameter reader:
-  ConfigReader[OffsetDateTime]
+ConfigReader[OffsetDateTime].from(config)
+// could not find implicit value for parameter reader:
+//  ConfigReader[OffsetDateTime]
 
-> import pureconfig.configurable.offsetDateTimeConfigConvert
-> import java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME
-> implicit val offsetDateTimeCC =
-    offsetDateTimeConfigConvert(ISO_OFFSET_DATE_TIME) 
-> ConfigReader[OffsetDateTime].from(config) 
-Right(2017-01-01T00:00+02:00)
+import pureconfig.configurable.offsetDateTimeConfigConvert
+import java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME
+implicit val offsetDateTimeCC =
+  offsetDateTimeConfigConvert(ISO_OFFSET_DATE_TIME) 
+ConfigReader[OffsetDateTime].from(config) 
+// Right(2017-01-01T00:00+02:00)
 </code></pre>
 </script></section>
 <section data-markdown style="text-align:left;"><script type="text/template">
@@ -442,13 +447,11 @@ PureConfig modules add support for
 - <em>refined-pureconfig</em>
 </script></section>
 <section data-markdown><script type="text/template">
-- failures are modelled as non empty lists of ConfigReaderFailure, aka <em>ConfigReaderFailures</em>
-- errors are aggregated together when they happen
-- <em>ConfigReaderFailure</em> model any kind of error that can happen
-- loadConfigOrThrow is like loadConfig but throws and exception in case of failure
+- failures are aggregated together in a non empty lists of ConfigReaderFailure, aka <em>ConfigReaderFailures</em>
+- <em>ConfigReaderFailure</em> model any kind of failure
+- consider loadConfigOrThrow if you plan to fail
 <pre style="width:101%;box-shadow: 0px 0px 0px rgba(0,0,0,0.3);">
-<code class="lang-scala hljs" style="max-height:100%;">
-loadConfigOrThrow[JavaConfig](parseString("")) 
+<code class="lang-scala hljs" style="max-height:100%;">loadConfigOrThrow[JavaConfig](parseString("")) 
 pureconfig.error.ConfigReaderException: Cannot convert
 configuration to a JavaConfig. Failures are:
   at 'ip-address':
@@ -456,6 +459,11 @@ configuration to a JavaConfig. Failures are:
   at 'num-threads':
     - Key not found.
 </code></pre>
+- useful if you plan to let the application fail anyway
+</script></section>
+<section data-markdown style="text-align:left;"><script type="text/template">
+PureConfig is an <em>automatic yet flexible</em> library that simplifies configuration by
+<em>doing the boilerplate</em> for you while <em>you focus</em> on the remaining parts
 </script></section>
 <section data-markdown><script type="text/template">
 # [PureConfig](https://github.com/pureconfig/pureconfig)
@@ -495,3 +503,4 @@ Questions?
 		</script>
 	</body>
 </html>
+
